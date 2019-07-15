@@ -1,0 +1,2 @@
+pyrak811
+git+https://github.com/inmcm/micropyGPS.git#micropyGPS

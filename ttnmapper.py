@@ -5,6 +5,42 @@ from time import sleep
 from rak811 import Mode, Rak811
 from ttn_secrets import APPS_KEY, DEV_ADDR, NWKS_KEY
 
+import array
+import traceback
+import time
+import smbus
+from micropyGPS import MicropyGPS
+my_gps = MicropyGPS()
+address = 0x42
+gpsReadInterval = 0.3
+
+BUS = smbus.SMBus(1)
+
+import threading
+
+
+class GpsPoller(threading.Thread):
+  def __init__(self):
+    threading.Thread.__init__(self)
+    self.current_value = None
+    self.running = True #setting the thread running to true
+
+  def run(self):
+    global my_gps
+    while gpsp.running:
+        while True: # Newline, or bad char.
+            c = BUS.read_byte(address)
+            if c == 255:
+                break
+            elif c == 10:
+                break
+            else:
+                if c > 90:
+                    c = ord(",")
+                my_gps.update(chr(c))
+        sleep(gpsReadInterval)
+
+
 lora = Rak811()
 
 # Most of the setup should happen only once...
@@ -22,39 +58,60 @@ lora.dr = 5
 
 print('Sending packets every 10 seconds - Interrupt to cancel loop')
 print('You can send downlinks from the TTN console')
+gpsp = GpsPoller() # create the thread
+
 try:
+    gpsp.start() # start it up
     while True:
-        print('Send packet')
-        #https://github.com/ttn-be/ttnmapper/blob/master/ttnmapper.py
-        # https://github.com/ttn-be/gps-node-examples/blob/master/Sodaq/sodaq-one-ttnmapper/decoder.js
-        data = array.array('B', [0, 0, 0, 0, 0, 0, 0, 0, 0])
+        print('Parsed Strings:', my_gps.gps_segments)
+        print('Sentence CRC Value:', hex(my_gps.crc_xor))
+        print('Longitude:', ( -1 if my_gps.longitude[2] == 'S' else 1) * (my_gps.longitude[0] + (my_gps.longitude[1] / 60)))
+        print('Latitude',  ( -1 if my_gps.latitude[2] == 'S' else 1) * (my_gps.latitude[0] + (my_gps.latitude[1] / 60)))
+        print('Altitude:', my_gps.altitude)
+        print('UTC Timestamp:', my_gps.timestamp)
+        print('Horizontal Dilution of Precision:', my_gps.hdop)
+        print('Satellites in Use by Receiver:', my_gps.satellites_in_use)
+        print('Data is Valid:', my_gps.valid)
 
-        lat = int(((nmea.latitude + 90) / 180) * 16777215)
-        data[0] = (lat >> 16) & 0xff
-        data[1] = (lat >> 8) & 0xff
-        data[2] = lat & 0xff
+        if my_gps.valid:
+            print('Send packet')
+            #https://github.com/ttn-be/ttnmapper/blob/master/ttnmapper.py
+            # https://github.com/ttn-be/gps-node-examples/blob/master/Sodaq/sodaq-one-ttnmapper/decoder.js
+            data = array.array('B', [0, 0, 0, 0, 0, 0, 0, 0, 0])
+            latitude =  ( -1 if my_gps.latitude[2] == 'S' else 1) * (my_gps.latitude[0] + (my_gps.latitude[1] / 60))
+            lat = int(((latitude + 90) / 180) * 16777215)
+            data[0] = (lat >> 16) & 0xff
+            data[1] = (lat >> 8) & 0xff
+            data[2] = lat & 0xff
 
-        lon = int(((nmea.longitude + 180) / 360) * 16777215)
-        data[3] = (lon >> 16) & 0xff
-        data[4] = (lon >> 8) & 0xff
-        data[5] = lon & 0xff
+            longitude = ( -1 if my_gps.longitude[2] == 'S' else 1) * (my_gps.longitude[0] + (my_gps.longitude[1] / 60))
+            lon = int(((longitude + 180) / 360) * 16777215)
+            data[3] = (lon >> 16) & 0xff
+            data[4] = (lon >> 8) & 0xff
+            data[5] = lon & 0xff
 
-        alt = int(nmea.altitude)
-        data[6] = (alt >> 8) & 0xff
-        data[7] = alt & 0xff
+            alt = int(my_gps.altitude)
+            data[6] = (alt >> 8) & 0xff
+            data[7] = alt & 0xff
 
-        hdop = int(nmea.hdop * 10)
-        data[8] = hdop & 0xff
+            hdop = int(my_gps.hdop * 10)
+            data[8] = hdop & 0xff
 
-        message = bytes(data)
-        # Cayenne lpp random value as analog
-        lora.send(data=bytes.fromhex('0102{:04x}'.format(randint(0, 0x7FFF))), confirm=False, port=1)
+            message = bytes(data)
+            lora.send(data=message, confirm=False, port=1)
 
-        while lora.nb_downlinks:
-            print('Received', lora.get_downlink()['data'])
+            #while lora.nb_downlinks:
+            #    print('Received', lora.get_downlink()['data'])
 
         sleep(10)
-except:  # noqa
+except (KeyboardInterrupt, SystemExit): #when you press ctrl+c
+    print("\nKilling Thread...")
+    gpsp.running = False
+    gpsp.join() # wait for the thread to finish what it's doing
+    print("Done.\nExiting.")
+except Exception as e:  # noqa
+    print(e)
+    traceback.print_exc()
     pass
 
 print('Cleaning up')
