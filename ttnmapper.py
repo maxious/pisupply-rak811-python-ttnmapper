@@ -48,6 +48,13 @@ print('Setup')
 lora.hard_reset()
 lora.mode = Mode.LoRaWan
 lora.band = 'AU915'
+# ttn subband 2 setup
+# https://github.com/PiSupply/IoTLoRaRange/blame/master/IoT%20LoRa%20Raspberry%20Pi%20Node%20pHAT/README.md#L98
+lora.set_config(ch_mask = '0,FF00')
+lora.set_config(ch_mask = '1,0000')
+lora.set_config(ch_mask = '2,0000')
+lora.set_config(ch_mask = '3,0000')
+lora.set_config(ch_mask = '4,0000')
 lora.set_config(dev_addr=DEV_ADDR,
                 apps_key=APPS_KEY,
                 nwks_key=NWKS_KEY)
