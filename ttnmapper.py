@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from gpspoller import GpsPoller, my_gps
 from random import randint
 from sys import exit
 from time import sleep
@@ -10,44 +11,6 @@ from blinkt import set_pixel, set_all, show
 
 import array
 import traceback
-import time
-import smbus
-from micropyGPS import MicropyGPS
-my_gps = MicropyGPS()
-address = 0x42
-gpsReadInterval = 0.3
-
-BUS = smbus.SMBus(1)
-
-import threading
-
-
-class GpsPoller(threading.Thread):
-  def __init__(self):
-    threading.Thread.__init__(self)
-    self.current_value = None
-    self.running = True #setting the thread running to true
-
-  def run(self):
-    global my_gps
-    while gpsp.running:
-        try:
-            while True: # Newline, or bad char.
-                c = BUS.read_byte(address)
-                if c == 255:
-                    break
-                elif c == 10:
-                    break
-                else:
-                    if c > 90:
-                        c = ord(",")
-                    my_gps.update(chr(c))
-            sleep(gpsReadInterval)
-        except IOError:
-            print("Reconnecting i2c bus...")
-            sleep(0.5)
-            connectBus()
-
 
 lora = Rak811()
 
