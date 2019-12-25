@@ -1,9 +1,12 @@
+#!/usr/bin/python3
 from random import randint
 from sys import exit
 from time import sleep
 
 from rak811 import Mode, Rak811
 from ttn_secrets import APPS_KEY, DEV_ADDR, NWKS_KEY
+
+from blinkt import set_pixel, set_all, show
 
 import array
 import traceback
@@ -28,24 +31,32 @@ class GpsPoller(threading.Thread):
   def run(self):
     global my_gps
     while gpsp.running:
-        while True: # Newline, or bad char.
-            c = BUS.read_byte(address)
-            if c == 255:
-                break
-            elif c == 10:
-                break
-            else:
-                if c > 90:
-                    c = ord(",")
-                my_gps.update(chr(c))
-        sleep(gpsReadInterval)
+        try:
+            while True: # Newline, or bad char.
+                c = BUS.read_byte(address)
+                if c == 255:
+                    break
+                elif c == 10:
+                    break
+                else:
+                    if c > 90:
+                        c = ord(",")
+                    my_gps.update(chr(c))
+            sleep(gpsReadInterval)
+        except IOError:
+            print("Reconnecting i2c bus...")
+            sleep(0.5)
+            connectBus()
 
 
 lora = Rak811()
 
 # Most of the setup should happen only once...
-print('Setup')
+set_pixel(1,255,128,0,0.1)
+show()
+print('LoRa Hard Reset')
 lora.hard_reset()
+print('LoRa Setup')
 lora.mode = Mode.LoRaWan
 lora.band = 'AU915'
 # ttn subband 2 setup
@@ -62,6 +73,7 @@ lora.set_config(dev_addr=DEV_ADDR,
 print('Joining')
 lora.join_abp()
 lora.dr = 5
+print('Joined')
 
 print('Sending packets every 10 seconds - Interrupt to cancel loop')
 print('You can send downlinks from the TTN console')
@@ -81,7 +93,10 @@ try:
         print('Data is Valid:', my_gps.valid)
 
         if my_gps.valid:
-            print('Send packet')
+            #blue light
+            set_pixel(1,0,255,0,0.1)
+            show()
+            print('Build packet')
             #https://github.com/ttn-be/ttnmapper/blob/master/ttnmapper.py
             # https://github.com/ttn-be/gps-node-examples/blob/master/Sodaq/sodaq-one-ttnmapper/decoder.js
             data = array.array('B', [0, 0, 0, 0, 0, 0, 0, 0, 0])
@@ -105,11 +120,17 @@ try:
             data[8] = hdop & 0xff
 
             message = bytes(data)
+            print('Send packet')
             lora.send(data=message, confirm=False, port=1)
-
+            #green light
+            set_pixel(1,0,0,255,0.1)
+            show()
             #while lora.nb_downlinks:
             #    print('Received', lora.get_downlink()['data'])
-
+        else:
+            #red light
+            set_pixel(1,128,0,0,0.1)
+            show()
         sleep(10)
 except (KeyboardInterrupt, SystemExit): #when you press ctrl+c
     print("\nKilling Thread...")

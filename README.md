@@ -19,6 +19,7 @@ $ rak811 get-config ch_mask
 0,ff00;1,0000;2,0000;3,0000;4,0000
 ```
 
+
 GPS provided via I2C from [SparkFun GPS Breakout - Chip Antenna, SAM-M8Q (Qwiic)](https://www.sparkfun.com/products/15210)
 
 Setting up I2C on the raspberry pi, you need to change the clock:
