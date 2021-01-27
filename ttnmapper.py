@@ -1,9 +1,13 @@
 #!/usr/bin/python3
+import sys
+if sys.version_info < (3,0):
+    print("We're not using the other versions anymore")
+    sys.exit(0)
 from gpspoller import GpsPoller, my_gps
 from random import randint
 from sys import exit
 from time import sleep
-
+from datetime import datetime
 from rak811 import Mode, Rak811
 from ttn_secrets import APPS_KEY, DEV_ADDR, NWKS_KEY
 
@@ -17,9 +21,10 @@ lora = Rak811()
 # Most of the setup should happen only once...
 set_pixel(1,255,128,0,0.1)
 show()
-print('LoRa Hard Reset')
+print("Starting ttnmapper %s" % datetime.now().isoformat())
+print("LoRa Hard Reset  %s" % datetime.now().isoformat())
 lora.hard_reset()
-print('LoRa Setup')
+print("LoRa Setup  %s" % datetime.now().isoformat())
 lora.mode = Mode.LoRaWan
 lora.band = 'AU915'
 # ttn subband 2 setup
@@ -33,10 +38,10 @@ lora.set_config(dev_addr=DEV_ADDR,
                 apps_key=APPS_KEY,
                 nwks_key=NWKS_KEY)
 
-print('Joining')
+print("Joining %s" % datetime.now().isoformat())
 lora.join_abp()
 lora.dr = 5
-print('Joined')
+print("Joined %s" % datetime.now().isoformat())
 
 print('Sending packets every 10 seconds - Interrupt to cancel loop')
 print('You can send downlinks from the TTN console')
