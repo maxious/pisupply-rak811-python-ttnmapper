@@ -23,11 +23,12 @@ class GpsPoller(threading.Thread):
  
   def run(self):
     global gpsd,gps_sky
-    while gpsp.running:
+    while self.running:
       gpsd.next() #this will continue to loop and grab EACH set of gpsd info to clear the buffer
       print gpsd.data.get("class")
-#      if gpsd['class'] == 'SKY':
-#          gps_sky = gpsd
+      if gpsd.data.get("class") == 'SKY':
+          gps_sky = gpsd
+	  print gps_sky
  
 if __name__ == '__main__':
   gpsp = GpsPoller() # create the thread
