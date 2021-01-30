@@ -66,34 +66,31 @@ from time import *
 import time
 import threading
 
-gpsd = None #seting the global variable
-gps_sky = None
-gps_tpv = None
-#os.system('clear') #clear the terminal (optional)
 
 class GpsdPoller(threading.Thread):
+  gpsd = None #seting the global variable
+  gps_sky = None
+  gps_tpv = None
   def __init__(self):
     threading.Thread.__init__(self)
-    global gpsd #bring it in scope
-    gpsd = gps(mode=WATCH_NEWSTYLE) #starting the stream of info
+    self.gpsd = gps(mode=WATCH_NEWSTYLE) #starting the stream of info
     self.current_value = None
     self.running = True #setting the thread running to true
 
   def run(self):
-    global gpsd,gps_sky,gps_tpv
     while self.running:
-      print("gpsd polled", gpsd.data,  datetime.now().isoformat())
+      #print("gpsd polled", self.gpsd.data,  datetime.now().isoformat())
 #      with Timeout(5.0) as timeout_ctx:
-      gpsd.next()
-      print("gpsd next'd", gpsd.data,  datetime.now().isoformat())
-      print(gpsd.fix.latitude,gpsd.fix.longitude,'Accuracy: ',gpsd.fix.epv,' Time: ',gpsd.utc)
-      print("Status: STATUS_%s\n" % ("NO_FIX", "FIX", "DGPS_FIX")[gpsd.fix.status])
-      print("Mode: MODE_%s\n" % ("ZERO", "NO_FIX", "2D", "3D")[gpsd.fix.mode])
-      print("Quality: %d p=%2.2f h=%2.2f v=%2.2f t=%2.2f g=%2.2f\n" %  (gpsd.satellites_used, gpsd.pdop, gpsd.hdop, gpsd.vdop, gpsd.tdop, gpsd.gdop))
-      if gpsd.data.get("class") == 'SKY':
-          gps_sky = gpsd
-      if gpsd.data.get("class") == 'TPV':
-          gps_tpv = gpsd
+      self.gpsd.next()
+      #print("gpsd next'd", self.gpsd.data,  datetime.now().isoformat())
+      #print(gpsd.fix.latitude,gpsd.fix.longitude,'Accuracy: ',gpsd.fix.epv,' Time: ',gpsd.utc)
+      #print("Status: STATUS_%s\n" % ("NO_FIX", "FIX", "DGPS_FIX")[gpsd.fix.status])
+      #print("Mode: MODE_%s\n" % ("ZERO", "NO_FIX", "2D", "3D")[gpsd.fix.mode])
+      #print("Quality: %d p=%2.2f h=%2.2f v=%2.2f t=%2.2f g=%2.2f\n" %  (gpsd.satellites_used, gpsd.pdop, gpsd.hdop, gpsd.vdop, gpsd.tdop, gpsd.gdop))
+      if self.gpsd.data.get("class") == 'SKY':
+          self.gps_sky = self.gpsd.data
+      if self.gpsd.data.get("class") == 'TPV':
+          self.gps_tpv = self.gpsd.data
 
 if __name__ == "__main__":
     gpsp = GpsPoller() # create the thread

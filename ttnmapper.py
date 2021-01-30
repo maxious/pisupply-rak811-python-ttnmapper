@@ -9,7 +9,7 @@ DISPLAYOTRON = False
 GPSD_GPS = True
 I2C_GPS = False
 
-from gpspoller import I2CGpsPoller, my_gps, GpsdPoller, gpsd
+from gpspoller import I2CGpsPoller, my_gps, GpsdPoller
 if BLINKT:
     from blinkt import set_pixel, set_all, show
 if DISPLAYOTRON:
@@ -76,18 +76,19 @@ try:
     gpsp.start() # start it up
     while True:
         valid = False
-        if GPSD_GPS and gpsd:
+        print(gpsp.gpsd)
+        if GPSD_GPS and  gpsp.gpsd:
             # https://gitlab.com/gpsd/gpsd/-/tree/master/gps
-            print(gpsd.fix.latitude,', ',gpsd.fix.longitude,'Accuracy: ',gpsd.fix.epv,' Time: ',gpsd.utc)
-            latitude = gpsd.fix.latitude,
-            longitude = gpsd.fix.longitude
-            altitude = 0
-            hdop = gpsd.hdop
-            valid = gpsd.fix.status == "FIX"
-            sats = gpsd.satellites
-            print("Status: STATUS_%s\n" % ("NO_FIX", "FIX", "DGPS_FIX")[gpsd.fix.status])
-            print("Mode: MODE_%s\n" % ("ZERO", "NO_FIX", "2D", "3D")[gpsd.fix.mode])
-            print("Quality: %d p=%2.2f h=%2.2f v=%2.2f t=%2.2f g=%2.2f\n" %  (gpsd.satellites_used, gpsd.pdop, gpsd.hdop, gpsd.vdop, gpsd.tdop, gpsd.gdop))
+            #print( gpsp.gpsd.fix.latitude,', ', gpsp.gpsd.fix.longitude,'Accuracy: ', gpsp.gpsd.fix.epv,' Time: ', gpsp.gpsd.utc)
+            latitude =  gpsp.gpsd.fix.latitude
+            longitude =  gpsp.gpsd.fix.longitude
+            altitude = 0 # FIX - ignore NaN and find right message - gpsp.gpsd.fix.altitude or 0
+            hdop =  gpsp.gpsd.hdop
+            valid =  gpsp.gpsd.fix.mode > 1
+            sats =  gpsp.gpsd.satellites
+            #print("Status: STATUS_%s" % ("NO_FIX", "FIX", "DGPS_FIX")[ gpsp.gpsd.fix.status])
+            #print("Mode: MODE_%s" % ("ZERO", "NO_FIX", "2D", "3D")[ gpsp.gpsd.fix.mode])
+            #print("Quality: %d p=%2.2f h=%2.2f v=%2.2f t=%2.2f g=%2.2f\n" %  (gpsd.satellites_used, gpsd.pdop, gpsd.hdop, gpsd.vdop, gpsd.tdop, gpsd.gdop))
         if I2C_GPS:
             latitude =  ( -1 if my_gps.latitude[2] == 'S' else 1) * (my_gps.latitude[0] + (my_gps.latitude[1] / 60))
             longitude = ( -1 if my_gps.longitude[2] == 'S' else 1) * (my_gps.longitude[0] + (my_gps.longitude[1] / 60))
@@ -114,7 +115,7 @@ try:
                 lcd.clear()
                 backlight.rgb(0, 0, 255)
                 lcd.write(valid,hdop, latitude, longitude, altitude)
-            print('Build packet')
+            print("Build packet %s" % datetime.now().isoformat())
             #https://github.com/ttn-be/ttnmapper/blob/master/ttnmapper.py
             # https://github.com/ttn-be/gps-node-examples/blob/master/Sodaq/sodaq-one-ttnmapper/decoder.js
             data = array.array('B', [0, 0, 0, 0, 0, 0, 0, 0, 0])
@@ -136,7 +137,7 @@ try:
             data[8] = dop & 0xff
 
             message = bytes(data)
-            print('Send packet')
+            print("Send packet %s" % datetime.now().isoformat())
             lora.send(data=message, confirm=False, port=1)
             #green light
             if BLINKT:
@@ -159,7 +160,9 @@ try:
                 lcd.clear()
                 backlight.rgb(255, 0, 0)
                 lcd.write(valid,hdop, latitude, longitude, altitude)
-            csvwriter.writerow([datetime.now().isoformat(),valid,None,None,None,None,None])
+            csvwriter.writerow([datetime.now().isoformat(),valid,None,None,None,None,sats if 'sats' in vars() else None])
+        print("---")
+        print()
         sleep(10)
 except (KeyboardInterrupt, SystemExit): #when you press ctrl+c
     print("\nKilling Thread...")
