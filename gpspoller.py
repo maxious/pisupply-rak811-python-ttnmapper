@@ -13,28 +13,6 @@ BUS = smbus.SMBus(1)
 
 import threading
 
-def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
-    import signal
-
-    class TimeoutError(Exception):
-        pass
-
-    def handler(signum, frame):
-        print("timedout")
-        raise TimeoutError()
-
-    # set the timeout handler
-    signal.signal(signal.SIGALRM, handler) 
-    signal.alarm(timeout_duration)
-    try:
-        result = func(*args, **kwargs)
-    except TimeoutError as exc:
-        result = default
-    finally:
-        signal.alarm(0)
-
-    return result
-
 class I2CGpsPoller(threading.Thread):
   def __init__(self):
     threading.Thread.__init__(self)
@@ -68,9 +46,6 @@ import threading
 
 
 class GpsdPoller(threading.Thread):
-  gpsd = None #seting the global variable
-  gps_sky = None
-  gps_tpv = None
   def __init__(self):
     threading.Thread.__init__(self)
     self.gpsd = gps(mode=WATCH_NEWSTYLE) #starting the stream of info
@@ -79,14 +54,12 @@ class GpsdPoller(threading.Thread):
 
   def run(self):
     while self.running:
-      #print("gpsd polled", self.gpsd.data,  datetime.now().isoformat())
-#      with Timeout(5.0) as timeout_ctx:
-      self.gpsd.next()
-      #print("gpsd next'd", self.gpsd.data,  datetime.now().isoformat())
-      #print(gpsd.fix.latitude,gpsd.fix.longitude,'Accuracy: ',gpsd.fix.epv,' Time: ',gpsd.utc)
-      #print("Status: STATUS_%s\n" % ("NO_FIX", "FIX", "DGPS_FIX")[gpsd.fix.status])
-      #print("Mode: MODE_%s\n" % ("ZERO", "NO_FIX", "2D", "3D")[gpsd.fix.mode])
-      #print("Quality: %d p=%2.2f h=%2.2f v=%2.2f t=%2.2f g=%2.2f\n" %  (gpsd.satellites_used, gpsd.pdop, gpsd.hdop, gpsd.vdop, gpsd.tdop, gpsd.gdop))
+      try:
+          self.gpsd.next()
+      except StopIteration:
+          print("gpsd crashed, reconnecting")
+          sleep(30)
+          self.gpsd = gps(mode=WATCH_NEWSTYLE)
       if self.gpsd.data.get("class") == 'SKY':
           self.gps_sky = self.gpsd.data
       if self.gpsd.data.get("class") == 'TPV':

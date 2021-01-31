@@ -27,6 +27,8 @@ from ttn_secrets import APPS_KEY, DEV_ADDR, NWKS_KEY
 
 import array
 import traceback
+NaN = float('nan')
+def isnan(x): return str(x) == 'nan'
 
 csvfile = open('gpslog-%s.csv'%strftime("%Y%m%d-%H%M%S"), 'w')
 csvwriter = csv.writer(csvfile)
@@ -82,7 +84,7 @@ try:
             #print( gpsp.gpsd.fix.latitude,', ', gpsp.gpsd.fix.longitude,'Accuracy: ', gpsp.gpsd.fix.epv,' Time: ', gpsp.gpsd.utc)
             latitude =  gpsp.gpsd.fix.latitude
             longitude =  gpsp.gpsd.fix.longitude
-            altitude = 0 # FIX - ignore NaN and find right message - gpsp.gpsd.fix.altitude or 0
+            altitude = gpsp.gpsd.fix.altitude if not isnan(gpsp.gpsd.fix.altitude) else 0
             hdop =  gpsp.gpsd.hdop
             valid =  gpsp.gpsd.fix.mode > 1
             sats =  gpsp.gpsd.satellites
